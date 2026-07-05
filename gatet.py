@@ -1,5 +1,5 @@
 # gatet.py - Boutique Vacation Rentals Stripe Gateway
-# ✅ Bright Data Web Unlocker API ကိုသုံးပြီး CAPTCHA အလိုအလျောက်ကျော်
+# Bright Data Web Unlocker API ကိုသုံးပြီး CAPTCHA အလိုအလျောက်ကျော်
 import requests
 import json
 import time
@@ -75,11 +75,9 @@ def gen_random_amount():
 def unlocker_request(url, payload, headers, timeout=60):
     """Send request through Bright Data Web Unlocker - Auto bypass CAPTCHA & anti-bot"""
     
-    # Build target URL with full payload
     full_url = f"{url}?{payload}" if payload else url
     
     try:
-        # Call Bright Data API
         response = requests.post(
             UNLOCKER_URL,
             headers={
@@ -127,7 +125,6 @@ def Tele(ccx: str, gate: str = "ch1", proxies: dict = None):
     charge_amount = gen_random_amount()
     first_name, last_name = gen_random_name()
     email = gen_random_email(first_name, last_name)
-    full_name = f"{first_name} {last_name}"
     phone = gen_random_phone()
 
     guid = gen_random_guid()
