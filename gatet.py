@@ -10,7 +10,7 @@ from faker import Faker
 fake = Faker("en_US")
 
 # ========== BRIGHT DATA WEB UNLOCKER API ==========
-UNLOCKER_API_KEY = "ff6d6cb9-7246-4a29-b567-ff3c25b9569a"
+UNLOCKER_API_KEY = "ab44017e-2953-462b-b8bd-ea523fa22eb7"
 UNLOCKER_ZONE = "web_unlocker1"
 UNLOCKER_URL = "https://api.brightdata.com/request"
 
