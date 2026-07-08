@@ -3,6 +3,7 @@ telebot
 requests==2.31.0
 pyTelegramBotAPI==4.15.0
 psycopg2-binary==2.9.9
+Faker==20.1.0
 python-dotenv==1.0.0
 typing-extensions==4.8.0
 certifi==2023.11.17
