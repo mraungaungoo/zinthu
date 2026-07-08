@@ -274,7 +274,7 @@ def check_card(cc, session):
     
     proxy = get_proxies()
     try:
-        # Call the gateway from gatet.py
+        # Call the gateway from gatetx3.py
         res = str(Tele(cc, proxies=proxy))
         # Terminal Logging
         print(f"[{datetime.now().strftime('%H:%M:%S')}] {cc} -> {res}")
