@@ -1,14 +1,13 @@
 # gatet.py - Boutique Vacation Rentals Stripe Gateway
 # Compatible with bot.py (single string return)
 # Fixed: proxies parameter added
+# Fixed: No Faker dependency - uses built-in random
+
 import requests
 import json
 import time
 import random
 import uuid
-from faker import Faker
-
-fake = Faker("en_US")
 
 # ========== CLASSIFICATION KEYS ==========
 success_keys = ["appreciate", "Payment Success", "redirect_to", "thank", "Thanks", "redirectUrl", "succeeded", "confirmation", "Successful!", "Successful", "hide_form", "redirect_url", "Merci", "Form entry saved", "Success!", "donation", "complete", "Payment successful"]
@@ -39,36 +38,82 @@ def classify_response(last):
         return "DECLINED"
     return "DEAD"
 
-# ========== HELPERS ==========
-def gen_random_user_agent():
-    chrome_version = random.randint(120, 137)
-    agents = [
-        f"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome_version}.0.0.0 Safari/537.36",
-        f"Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome_version}.0.0.0 Mobile Safari/537.36",
-        f"Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1",
-    ]
-    return random.choice(agents)
-
+# ========== HELPERS (NO FAKER) ==========
 def gen_random_name():
-    return fake.first_name(), fake.last_name()
+    """Generate random name without Faker"""
+    first_names = [
+        "James", "Mary", "John", "Patricia", "Robert", "Jennifer", "Michael", "Linda", 
+        "William", "Elizabeth", "David", "Barbara", "Richard", "Susan", "Joseph", "Jessica",
+        "Thomas", "Sarah", "Charles", "Karen", "Christopher", "Nancy", "Daniel", "Lisa",
+        "Matthew", "Betty", "Anthony", "Margaret", "Mark", "Sandra", "Donald", "Ashley",
+        "Steven", "Kimberly", "Paul", "Emily", "Andrew", "Donna", "Joshua", "Michelle",
+        "Kenneth", "Carol", "Kevin", "Amanda", "Brian", "Melissa", "George", "Deborah",
+        "Timothy", "Stephanie", "Ronald", "Rebecca", "Edward", "Sharon", "Jason", "Laura",
+        "Jeffrey", "Cynthia", "Ryan", "Kathleen", "Jacob", "Amy", "Gary", "Angela",
+        "Nicholas", "Shirley", "Eric", "Anna", "Jonathan", "Ruth", "Stephen", "Emma",
+        "Larry", "Virginia", "Justin", "Alice", "Scott", "Jacqueline", "Brandon", "Joyce",
+        "Benjamin", "Martha", "Samuel", "Teresa", "Gregory", "Janet", "Alexander", "Helen",
+        "Patrick", "Judy", "Frank", "Gloria", "Raymond", "Ann", "Jack", "Diane",
+        "Dennis", "Katherine", "Jerry", "Frances", "Tyler", "Megan", "Aaron", "Robin",
+        "Jose", "Lori", "Nathan", "Brenda", "Adam", "Evelyn", "Henry", "Alice",
+        "Zachary", "Diana", "Tiffany", "Maria", "Peter", "Christina", "Cameron", "Laura"
+    ]
+    last_names = [
+        "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis",
+        "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez", "Wilson", "Anderson", "Thomas",
+        "Taylor", "Moore", "Jackson", "Martin", "Lee", "Perez", "Thompson", "White",
+        "Harris", "Sanchez", "Clark", "Ramirez", "Lewis", "Robinson", "Walker", "Young",
+        "Allen", "King", "Wright", "Scott", "Torres", "Nguyen", "Hill", "Flores",
+        "Green", "Adams", "Nelson", "Baker", "Hall", "Rivera", "Campbell", "Mitchell",
+        "Carter", "Roberts", "Gomez", "Phillips", "Evans", "Turner", "Diaz", "Parker",
+        "Cruz", "Edwards", "Collins", "Reyes", "Stewart", "Morris", "Murphy", "Cook",
+        "Rogers", "Morgan", "Peterson", "Cooper", "Reed", "Bailey", "Bell", "Howard",
+        "Ward", "Cox", "Diaz", "Richardson", "Wood", "Watson", "Brooks", "Bennett",
+        "Gray", "James", "Reyes", "Cruz", "Hughes", "Price", "Myers", "Long",
+        "Foster", "Sanders", "Ross", "Powell", "Sullivan", "Russell", "Ortiz", "Jenkins",
+        "Perry", "Butler", "Barnes", "Fisher", "Henderson", "Coleman", "Simmons", "Patterson"
+    ]
+    return random.choice(first_names), random.choice(last_names)
 
 def gen_random_email(first_name, last_name):
-    domains = ["@gmail.com", "@hotmail.com", "@outlook.com", "@yahoo.com"]
+    domains = ["@gmail.com", "@hotmail.com", "@outlook.com", "@yahoo.com", "@protonmail.com", "@mail.com"]
     return f"{first_name.lower()}{random.randint(1000, 99999)}{random.choice(domains)}"
+
+def gen_random_user_agent():
+    chrome_version = random.randint(120, 137)
+    firefox_version = random.randint(100, 130)
+    safari_version = random.randint(14, 17)
+    
+    agents = [
+        f"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome_version}.0.0.0 Safari/537.36",
+        f"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:{firefox_version}.0) Gecko/20100101 Firefox/{firefox_version}.0",
+        f"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/{safari_version}.0 Safari/605.1.15",
+        f"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome_version}.0.0.0 Safari/537.36 Edg/{chrome_version}.0.0.0",
+        f"Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome_version}.0.0.0 Mobile Safari/537.36",
+        f"Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1",
+        f"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome_version}.0.0.0 Safari/537.36",
+        f"Mozilla/5.0 (Windows NT 10.0; rv:{firefox_version}.0) Gecko/20100101 Firefox/{firefox_version}.0",
+    ]
+    return random.choice(agents)
 
 def gen_random_guid():
     return f"{uuid.uuid4()}{random.randint(10000, 99999)}"
 
 def gen_random_phone():
-    return f"07{random.randint(10000000, 99999999)}"
+    formats = [
+        f"07{random.randint(10000000, 99999999)}",
+        f"+1{random.randint(100,999)}{random.randint(100,999)}{random.randint(1000,9999)}",
+        f"0{random.randint(100,999)}{random.randint(100,999)}{random.randint(1000,9999)}",
+        f"{random.randint(100,999)}-{random.randint(100,999)}-{random.randint(1000,9999)}"
+    ]
+    return random.choice(formats)
 
-# ========== RANDOM AMOUNT GENERATOR ==========
 def gen_random_amount():
     """Random amount between 0.50 and 1.50"""
     cents = random.randint(50, 150)
     return f"{cents // 100}.{cents % 100:02d}"
 
-# ========== MAIN TELE FUNCTION (FIXED) ==========
+# ========== MAIN TELE FUNCTION ==========
 def Tele(ccx: str, gate: str = "ch1", proxies: dict = None):
     """
     Check credit card - returns string: "message|amount|time"
@@ -270,7 +315,6 @@ def Tele(ccx: str, gate: str = "ch1", proxies: dict = None):
             return f"Thank you for your donation!|{charge_amount}|{elapsed}"
         else:
             return f"DEAD - {text[:80]}|{charge_amount}|{elapsed}"
-
 
 # ========== TEST ==========
 if __name__ == "__main__":
